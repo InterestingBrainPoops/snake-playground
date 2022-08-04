@@ -3,25 +3,51 @@ use crate::{
     snake::Snake,
 };
 
+#[derive(Clone)]
 pub struct Request {
-    turn: u32,
-    board: Board,
-    you: Snake,
+    pub turn: u32,
+    pub board: Board,
+    pub you: Snake,
 }
+#[derive(Clone)]
 pub struct Board {
-    height: u8,
-    width: u8,
-    food: Vec<Coordinate>,
-    hazards: Vec<Coordinate>,
-    snakes: Vec<Snake>,
+    pub height: u8,
+    pub width: u8,
+    pub food: Vec<Coordinate>,
+    pub hazards: Vec<Coordinate>,
+    pub snakes: Vec<Snake>,
 }
+
+#[derive(Clone)]
 pub struct Move {
-    direction: Direction,
-    id: String,
+    pub direction: Direction,
+    pub id: String,
+}
+
+impl Move {
+    pub fn new(direction: Direction, id: String) -> Self {
+        Self { direction, id }
+    }
 }
 
 impl Request {
-    pub fn make_moves(&mut self, moves: Vec<Move>) {
+    pub fn game_over(&self) -> bool {
+        // am i dead
+        if self.board.snakes.iter().any(|x| x.id == self.you.id) {
+            return true;
+        }
+        // is there only 1 person alive
+        if self.board.snakes.len() == 1 {
+            return true;
+        }
+        // is noone alive
+        if self.board.snakes.len() == 0 {
+            return true;
+        }
+        false
+    }
+
+    pub fn make_moves(&mut self, moves: &Vec<Move>) {
         // move all the snakes
         for snake in &mut self.board.snakes {
             let move_pos = moves.iter().position(|s| s.id == snake.id).unwrap();
@@ -92,5 +118,8 @@ impl Request {
             new_snakes.push(snake.clone());
         }
         self.board.snakes = new_snakes;
+        if let Some(idx) = self.board.snakes.iter().position(|s| s.id == self.you.id) {
+            self.you = self.board.snakes[idx].clone();
+        }
     }
 }

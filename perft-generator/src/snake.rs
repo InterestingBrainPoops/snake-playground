@@ -1,4 +1,7 @@
-use crate::coordinate::{Coordinate, Direction};
+use crate::{
+    board::Move,
+    coordinate::{Coordinate, Direction},
+};
 
 #[derive(Clone, Debug)]
 pub struct Snake {
@@ -43,5 +46,14 @@ impl Snake {
 
     pub fn snake_lost_head_collision(snake1: &Snake, snake2: &Snake) -> bool {
         snake1.head == snake2.head && snake1.length <= snake2.length
+    }
+
+    pub fn get_moves(&self) -> Vec<Move> {
+        vec![
+            Move::new(Direction::Up, self.id),
+            Move::new(Direction::Right, self.id),
+            Move::new(Direction::Left, self.id),
+            Move::new(Direction::Down, self.id),
+        ]
     }
 }
