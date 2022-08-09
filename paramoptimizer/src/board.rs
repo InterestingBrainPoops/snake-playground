@@ -50,6 +50,7 @@ pub struct Position {
     pub board: Board,
     pub my_health: u8,
     pub their_health: u8,
+    pub param_values: Vec<i32>,
 }
 
 #[derive(Clone, Copy, DeepSizeOf)]

@@ -79,7 +79,12 @@ impl Optimizer {
             .positions
             .par_iter()
             .map(|position| {
-                let score = score(position, values);
+                let score: i32 = position
+                    .param_values
+                    .iter()
+                    .enumerate()
+                    .map(|x| *x.1 * values[x.0])
+                    .sum();
                 let actual: f64 = position.status.into();
                 (actual - sigmoid(k, score as f64)).powf(2.0)
             })

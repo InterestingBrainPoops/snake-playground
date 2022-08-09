@@ -7,7 +7,8 @@ use crate::{
     optimize::Optimizer,
 };
 use brotli2::read::BrotliDecoder;
-use deepsize::DeepSizeOf;
+use indicatif::ProgressBar;
+use rayon::prelude::{IntoParallelRefMutIterator, ParallelIterator};
 use rusqlite::{Connection, Result};
 
 use std::{
@@ -28,6 +29,9 @@ fn main() -> Result<()> {
     let conn = Connection::open("./two_snake_snakedump.sqlite")?;
 
     let mut stmt = conn.prepare("SELECT id, game_id , game_type, unique_snake_count , compressed_frames_json FROM snake_games")?;
+    let start = Instant::now();
+
+    println!("Getting sql data");
     let person_iter = stmt.query_map([], |row| {
         Ok(GameData {
             id: row.get(0)?,
@@ -38,6 +42,10 @@ fn main() -> Result<()> {
         })
     })?;
     let mut games = vec![];
+    println!("Time taken : {:?}", Instant::now() - start);
+    println!("Collecting all games from sql");
+    let start = Instant::now();
+
     for contents in person_iter {
         let mut decompressor = BrotliDecoder::new(Cursor::new(
             contents.unwrap().compressed_frames_json.unwrap(),
@@ -95,19 +103,34 @@ fn main() -> Result<()> {
                 my_health: me_health,
                 their_health: they_health,
                 board: position.clone(),
-            })
+                param_values: vec![],
+            });
         }
         games.append(&mut positions);
     }
-    println!("number of frames: {}", games.len());
+    println!("Time taken : {:?}", Instant::now() - start);
+    println!("Finished adding all frames");
+    println!("Processing all frames");
+    let start = Instant::now();
+
+    let bar = ProgressBar::new(games.len() as u64);
+
+    games.par_iter_mut().for_each(|x| {
+        let param_values = eval::score(x);
+        x.param_values = param_values;
+        bar.inc(1);
+    });
+    bar.finish();
+    println!("Time taken : {:?}", Instant::now() - start);
+    println!("Finished processing all frames");
+    println!("Number of frames: {}", games.len());
     // let x = Optimizer { positions: games };
     // let min_k = x.minimize_k(0.16, &vec![36, -41, -4, 113]);
     // println!("min_k : {min_k}");
     let start = Instant::now();
-    println!("using {} threads for rayon", rayon::max_num_threads());
     let x = Optimizer { positions: games };
-    let new_params = x.local_optimize(0.155, vec![49, -37, -1, 77, 7]);
-    println!("final parameters: {:?}", new_params);
-    println!("time taken: {:?}", Instant::now() - start);
+    let new_params = x.local_optimize(0.155, vec![41, -48, -4, 107, 13]);
+    println!("Final parameters: {:?}", new_params);
+    println!("Time taken: {:?}", Instant::now() - start);
     Ok(())
 }
