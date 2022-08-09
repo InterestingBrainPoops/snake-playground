@@ -3,7 +3,7 @@ mod eval;
 mod optimize;
 
 use crate::{
-    board::{Game, Position, Status},
+    board::{Game, Position, Status, NUM_PARAMS},
     optimize::Optimizer,
 };
 use brotli2::read::BrotliDecoder;
@@ -24,7 +24,6 @@ struct GameData {
     unique_snake_count: u8,
     compressed_frames_json: Option<Vec<u8>>,
 }
-
 fn main() -> Result<()> {
     let conn = Connection::open("./two_snake_snakedump.sqlite")?;
 
@@ -55,7 +54,7 @@ fn main() -> Result<()> {
         let game: Game = serde_json::from_str(&contents).unwrap();
         let mut me_health = 100;
         let mut they_health = 100;
-        for (idx, position) in game.positions.iter().enumerate() {
+        for (idx, _) in game.positions.iter().enumerate() {
             if idx == 0 {
                 continue;
             }
@@ -84,6 +83,9 @@ fn main() -> Result<()> {
         };
         let mut positions = vec![];
         for (idx, position) in game.positions.iter().enumerate() {
+            if game.positions.len() - 1 == idx {
+                continue;
+            }
             if idx == 0 {
                 continue;
             }
@@ -98,12 +100,19 @@ fn main() -> Result<()> {
             if old_food.contains(&other_head) {
                 they_health = 100;
             }
+            let mut all_bb: u128 = 0;
+            for snake in &position.snakes {
+                for piece in &snake.body {
+                    all_bb |= u128::from(*piece);
+                }
+            }
             positions.push(Position {
                 status,
                 my_health: me_health,
                 their_health: they_health,
                 board: position.clone(),
-                param_values: vec![],
+                param_values: Default::default(),
+                all_bb,
             });
         }
         games.append(&mut positions);
@@ -121,6 +130,7 @@ fn main() -> Result<()> {
         bar.inc(1);
     });
     bar.finish();
+    println!();
     println!("Time taken : {:?}", Instant::now() - start);
     println!("Finished processing all frames");
     println!("Number of frames: {}", games.len());
@@ -129,7 +139,7 @@ fn main() -> Result<()> {
     // println!("min_k : {min_k}");
     let start = Instant::now();
     let x = Optimizer { positions: games };
-    let new_params = x.local_optimize(0.155, vec![41, -48, -4, 107, 13]);
+    let new_params = x.local_optimize(0.155, vec![44, -20, -4, 51, 6]);
     println!("Final parameters: {:?}", new_params);
     println!("Time taken: {:?}", Instant::now() - start);
     Ok(())

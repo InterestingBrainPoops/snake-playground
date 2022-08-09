@@ -43,6 +43,7 @@ pub struct Board {
 pub struct Game {
     pub positions: Vec<Board>,
 }
+pub const NUM_PARAMS: usize = 5;
 
 #[derive(DeepSizeOf)]
 pub struct Position {
@@ -50,7 +51,8 @@ pub struct Position {
     pub board: Board,
     pub my_health: u8,
     pub their_health: u8,
-    pub param_values: Vec<i32>,
+    pub param_values: [i32; NUM_PARAMS],
+    pub all_bb: u128,
 }
 
 #[derive(Clone, Copy, DeepSizeOf)]
@@ -70,6 +72,12 @@ impl Into<f64> for Status {
     }
 }
 
+impl From<Coordinate> for u128 {
+    fn from(input: Coordinate) -> Self {
+        1 << (input.x + input.y * 11)
+    }
+}
+
 impl Battlesnake {
     pub fn dead(&self, state: &Board, health: u8) -> bool {
         let my_head = self.body[0];
@@ -82,7 +90,6 @@ impl Battlesnake {
         if health == 0 {
             return true;
         }
-
         if my_head.x < 0 || my_head.x > 10 || my_head.y < 0 || my_head.y > 10 {
             return true;
         }

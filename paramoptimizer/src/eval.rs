@@ -1,8 +1,8 @@
-use crate::board::{Board, Coordinate, Position};
+use crate::board::{Board, Coordinate, Position, NUM_PARAMS};
 use pathfinding::prelude::astar;
 
 // this is always from the perspective of the first snake (hacky fix, but it works)
-pub fn score(position: &Position) -> Vec<i32> {
+pub fn score(position: &Position) -> [i32; NUM_PARAMS] {
     let me = position.board.snakes[0].clone();
     let other = position.board.snakes[1].clone();
     let length_difference = (me.body.len() - other.body.len()) as i32;
@@ -15,13 +15,13 @@ pub fn score(position: &Position) -> Vec<i32> {
     for food in &position.board.food {
         let my_path = astar(
             &position.board.snakes[0].body[0],
-            |p| successors(p, &position.board),
+            |p| successors(p, &position.board, position.all_bb),
             |p| manhattan(p, food),
             |p| *p == *food,
         );
         let their_path = astar(
             &position.board.snakes[1].body[0],
-            |p| successors(p, &position.board),
+            |p| successors(p, &position.board, position.all_bb),
             |p| manhattan(p, food),
             |p| *p == *food,
         );
@@ -52,13 +52,13 @@ pub fn score(position: &Position) -> Vec<i32> {
             }
             let my_path = astar(
                 &position.board.snakes[0].body[0],
-                |p| successors(p, &position.board),
+                |p| successors(p, &position.board, position.all_bb),
                 |p| manhattan(p, thing),
                 |p| *p == *thing,
             );
             let their_path = astar(
                 &position.board.snakes[1].body[0],
-                |p| successors(p, &position.board),
+                |p| successors(p, &position.board, position.all_bb),
                 |p| manhattan(p, thing),
                 |p| *p == *thing,
             );
@@ -80,7 +80,7 @@ pub fn score(position: &Position) -> Vec<i32> {
     }
     let square_ownership_difference = (my_squares - their_squares);
 
-    vec![
+    [
         length_difference,
         distance_to_center,
         health_diff,
@@ -89,8 +89,8 @@ pub fn score(position: &Position) -> Vec<i32> {
     ]
 }
 
-fn successors(coord: &Coordinate, board: &Board) -> Vec<(Coordinate, i32)> {
-    let possible = vec![
+fn successors(coord: &Coordinate, board: &Board, bb: u128) -> Vec<(Coordinate, i32)> {
+    let possible = [
         Coordinate::new(0, 1),
         Coordinate::new(0, -1),
         Coordinate::new(-1, 0),
@@ -107,7 +107,7 @@ fn successors(coord: &Coordinate, board: &Board) -> Vec<(Coordinate, i32)> {
         if thing.x < 0 || thing.x > 10 || thing.y < 0 || thing.y > 10 {
             continue;
         }
-        if board.snakes[0].body.contains(thing) || board.snakes[1].body.contains(thing) {
+        if bb & u128::from(*thing) != 0 {
             continue;
         }
         out.push(*thing);
