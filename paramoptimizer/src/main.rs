@@ -10,7 +10,10 @@ use brotli2::read::BrotliDecoder;
 use deepsize::DeepSizeOf;
 use rusqlite::{Connection, Result};
 
-use std::io::{prelude::*, Cursor};
+use std::{
+    io::{prelude::*, Cursor},
+    time::Instant,
+};
 
 #[derive(Debug)]
 struct GameData {
@@ -96,9 +99,15 @@ fn main() -> Result<()> {
         }
         games.append(&mut positions);
     }
-    println!("{:?}", games.deep_size_of());
+    println!("number of frames: {}", games.len());
+    // let x = Optimizer { positions: games };
+    // let min_k = x.minimize_k(0.16, &vec![36, -41, -4, 113]);
+    // println!("min_k : {min_k}");
+    let start = Instant::now();
+    println!("using {} threads for rayon", rayon::max_num_threads());
     let x = Optimizer { positions: games };
-    let new_params = x.local_optimize(vec![30, 4]);
-    println!("{:?}", new_params);
+    let new_params = x.local_optimize(0.155, vec![49, -37, -1, 77, 7]);
+    println!("final parameters: {:?}", new_params);
+    println!("time taken: {:?}", Instant::now() - start);
     Ok(())
 }

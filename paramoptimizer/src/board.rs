@@ -1,6 +1,8 @@
+use std::ops::Add;
+
 use deepsize::DeepSizeOf;
 use serde::{Deserialize, Serialize};
-#[derive(Serialize, Deserialize, Debug, DeepSizeOf, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, DeepSizeOf, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Coordinate {
     #[serde(rename = "X")]
     pub x: i32,
@@ -13,6 +15,18 @@ impl Coordinate {
         Self { x, y }
     }
 }
+
+impl Add for Coordinate {
+    type Output = Coordinate;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, DeepSizeOf, Clone)]
 pub struct Battlesnake {
     pub body: Vec<Coordinate>,

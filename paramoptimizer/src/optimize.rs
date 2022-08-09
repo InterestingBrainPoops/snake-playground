@@ -1,13 +1,14 @@
 use crate::{board::Position, eval::score};
+use rayon::prelude::*;
 
 pub struct Optimizer {
     pub positions: Vec<Position>,
 }
 
 impl Optimizer {
-    pub fn local_optimize(&self, initial_guess: Vec<i32>) -> Vec<i32> {
+    pub fn local_optimize(&self, k: f64, initial_guess: Vec<i32>) -> Vec<i32> {
         let n_params = initial_guess.len();
-        let mut best_e = self.evaluation_error(&initial_guess);
+        let mut best_e = self.evaluation_error(k, &initial_guess);
         let mut best_par_values = initial_guess;
         let mut improved = true;
         let mut x = 0;
@@ -16,14 +17,14 @@ impl Optimizer {
             for pi in 0..n_params {
                 let mut new_par_values = best_par_values.clone();
                 new_par_values[pi] += 1i32;
-                let mut new_e = self.evaluation_error(&new_par_values);
+                let mut new_e = self.evaluation_error(k, &new_par_values);
                 if new_e < best_e {
                     best_e = new_e;
                     best_par_values = new_par_values;
                     improved = true;
                 } else {
                     new_par_values[pi] -= 2i32;
-                    new_e = self.evaluation_error(&new_par_values);
+                    new_e = self.evaluation_error(k, &new_par_values);
                     if new_e < best_e {
                         best_e = new_e;
                         best_par_values = new_par_values;
@@ -36,18 +37,53 @@ impl Optimizer {
             }
             x += 1;
         }
+        print!("Final error: {} ", best_e);
         best_par_values
     }
 
-    fn evaluation_error(&self, values: &Vec<i32>) -> f64 {
+    pub fn minimize_k(&self, start: f64, params: &Vec<i32>) -> f64 {
+        let mut best = start;
+        let mut best_e = self.evaluation_error(start, &params);
+        let mut improved = true;
+        let mut x = 0;
+        while improved {
+            improved = false;
+            let mut new_k = best + 0.001;
+            let mut new_e = self.evaluation_error(new_k, &params);
+            if new_e < best_e {
+                best_e = new_e;
+                best = new_k;
+                improved = true;
+            } else {
+                new_k -= 0.002;
+                new_e = self.evaluation_error(new_k, &params);
+                if new_e < best_e {
+                    best_e = new_e;
+                    best = new_k;
+                    improved = true;
+                }
+            }
+
+            if x % 10 == 0 {
+                println!("error: {}, best_k : {:?}", best_e, best);
+            }
+            x += 1;
+        }
+        best
+    }
+
+    fn evaluation_error(&self, k: f64, values: &Vec<i32>) -> f64 {
         let n = self.positions.len();
         let n_inverse = 1.0 / (n as f64);
-        let mut sum = 0.0;
-        for position in &self.positions {
-            let score = score(position, values);
-            let actual: f64 = position.status.into();
-            sum += (actual - sigmoid(0.16, score as f64)).powf(2.0);
-        }
+        let sum: f64 = self
+            .positions
+            .par_iter()
+            .map(|position| {
+                let score = score(position, values);
+                let actual: f64 = position.status.into();
+                (actual - sigmoid(k, score as f64)).powf(2.0)
+            })
+            .sum();
         n_inverse * sum
     }
 }
