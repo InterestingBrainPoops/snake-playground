@@ -45,7 +45,7 @@ pub struct Game {
 }
 pub const NUM_PARAMS: usize = 5;
 
-#[derive(DeepSizeOf)]
+#[derive(DeepSizeOf, Serialize, Clone, Deserialize)]
 pub struct Position {
     pub status: Status,
     pub board: Board,
@@ -55,7 +55,7 @@ pub struct Position {
     pub all_bb: u128,
 }
 
-#[derive(Clone, Copy, DeepSizeOf)]
+#[derive(Clone, Copy, DeepSizeOf, Serialize, Deserialize)]
 pub enum Status {
     Win,
     Loss,

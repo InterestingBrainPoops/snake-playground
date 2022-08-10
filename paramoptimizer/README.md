@@ -4,7 +4,7 @@
 so it looks like this:  
 ```
 parameter_optimizer/
-├─ src
+├─ src/
 ├─ two_snake_snakedump.sqlite
 ├─ Cargo.lock
 ├─ Cargo.toml
