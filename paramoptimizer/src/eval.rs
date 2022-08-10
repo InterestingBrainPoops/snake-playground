@@ -2,7 +2,7 @@ use crate::board::{Board, Coordinate, Position, NUM_PARAMS};
 use pathfinding::prelude::astar;
 
 // this is always from the perspective of the first snake (hacky fix, but it works)
-pub fn score(position: &Position) -> [i32; NUM_PARAMS] {
+pub fn score(position: &Position) -> [f64; NUM_PARAMS] {
     let me = position.board.snakes[0].clone();
     let other = position.board.snakes[1].clone();
     let length_difference = (me.body.len() - other.body.len()) as i32;
@@ -81,11 +81,11 @@ pub fn score(position: &Position) -> [i32; NUM_PARAMS] {
     let square_ownership_difference = (my_squares - their_squares);
 
     [
-        length_difference,
-        distance_to_center,
-        health_diff,
-        food_ownership_difference,
-        square_ownership_difference,
+        length_difference as f64,
+        distance_to_center as f64,
+        health_diff as f64,
+        food_ownership_difference as f64,
+        square_ownership_difference as f64,
     ]
 }
 

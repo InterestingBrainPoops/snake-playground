@@ -176,7 +176,17 @@ fn main() -> Result<()> {
     // println!("min_k : {min_k}");
     let start = Instant::now();
     let x = Optimizer { positions: frames };
-    let new_params = x.local_optimize(0.155, vec![44, -20, -4, 51, 6]);
+    let new_params = x.local_optimize(
+        0.155,
+        vec![
+            0.0603023030685956,
+            -0.00733339763149862,
+            -0.02557371776507608,
+            0.05614206228233734,
+            0.028001606267965776,
+        ],
+    );
+
     println!("Final parameters: {:?}", new_params);
     println!("Time taken: {:?}", Instant::now() - start);
     Ok(())

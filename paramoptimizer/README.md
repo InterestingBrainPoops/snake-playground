@@ -15,3 +15,6 @@ by default this uses rayon, so expect high cpu usage.
   
 ## Usage:  
 in `src/main.rs` at line 109, you can input the values for your eval function. the current optimized values are stored there.  
+  
+## Algorithm:  
+It runs a local search starting from the given values and minimizes the mean squared error across the dataset.  

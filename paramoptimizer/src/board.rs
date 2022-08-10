@@ -51,7 +51,7 @@ pub struct Position {
     pub board: Board,
     pub my_health: u8,
     pub their_health: u8,
-    pub param_values: [i32; NUM_PARAMS],
+    pub param_values: [f64; NUM_PARAMS],
     pub all_bb: u128,
 }
 
