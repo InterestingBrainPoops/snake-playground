@@ -5,7 +5,7 @@ use pathfinding::prelude::astar;
 pub fn score(position: &Position) -> [f64; NUM_PARAMS] {
     // me
     let me = position.board.snakes[0].clone();
-    // them 
+    // them
     let other = position.board.snakes[1].clone();
     // the length difference between me and them
     let length_difference = (me.body.len() - other.body.len()) as i32;
@@ -13,8 +13,8 @@ pub fn score(position: &Position) -> [f64; NUM_PARAMS] {
     let distance_to_center = (manhattan(&me.body[0], &Coordinate::new(6, 6))
         - manhattan(&other.body[0], &Coordinate::new(6, 6)));
     // my heatlh - their health
-        let health_diff = (position.my_health - position.their_health) as i32;
-// my nearest food
+    let health_diff = (position.my_health - position.their_health) as i32;
+    // my nearest food
     let mut my_nearest = 0;
     // their nearest food
     let mut their_nearest = 0;
@@ -35,12 +35,12 @@ pub fn score(position: &Position) -> [f64; NUM_PARAMS] {
         );
         // my distance to the food
         let my_dist = match my_path {
-            None => 1000, // if i have no path, set the path length to 1k
+            None => 1000,                  // if i have no path, set the path length to 1k
             Some((path, _)) => path.len(), // otherwise set it to the length of the path
         };
         // their distance to the food
         let their_dist = match their_path {
-            None => 1000, // if they have no path, set the path length to 1k
+            None => 1000,                  // if they have no path, set the path length to 1k
             Some((path, _)) => path.len(), // otherwise set it to the length of the path
         };
         // give credit based on whose path is shorter
@@ -87,11 +87,11 @@ pub fn score(position: &Position) -> [f64; NUM_PARAMS] {
             );
             // my distance to the square
             let my_dist = match my_path {
-                None => 1000, // if i dont have a path, set it to 1k
+                None => 1000,                  // if i dont have a path, set it to 1k
                 Some((path, _)) => path.len(), // if i do, set it to the length of the path
             };
             let their_dist = match their_path {
-                None => 1000, // if they dont have a path, set it to 1k
+                None => 1000,                  // if they dont have a path, set it to 1k
                 Some((path, _)) => path.len(), // if they do, set to the length of the path
             };
             // credit based on who is closer

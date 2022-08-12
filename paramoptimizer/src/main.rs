@@ -47,7 +47,7 @@ fn main() -> Result<()> {
     let mut frames = vec![];
     // check if we have a datastore file
     if Path::new("./datastore").exists() {
-    // if we do then read from it
+        // if we do then read from it
         println!("Found old datastore, going to use");
         // get t0
         let start = Instant::now();
@@ -78,7 +78,7 @@ fn main() -> Result<()> {
                 compressed_frames_json: row.get(4)?,
             })
         })?;
-        
+
         println!("Time taken : {:?}", Instant::now() - start);
         println!("Collecting all games from sql");
         // get t0
@@ -104,7 +104,7 @@ fn main() -> Result<()> {
             // go through all of the posiitons in the game
             for (idx, _) in game.positions.iter().enumerate() {
                 // ignore startpos and endpos
-                if idx == 0 || game.positions.len() - 1 == idx{
+                if idx == 0 || game.positions.len() - 1 == idx {
                     continue;
                 }
                 // store food from previous position
@@ -160,7 +160,7 @@ fn main() -> Result<()> {
                 }
                 // find old food
                 let old_food = game.positions[idx - 1].food.clone();
-                // my head 
+                // my head
                 let my_head = game.positions[idx].snakes[0].body[0];
                 // their head
                 let other_head = game.positions[idx].snakes[1].body[0];
@@ -234,7 +234,6 @@ fn main() -> Result<()> {
     // let x = Optimizer { positions: games };
     // let min_k = x.minimize_k(0.16, &vec![36, -41, -4, 113]);
     // println!("min_k : {min_k}");
-
 
     // get t0
     let start = Instant::now();

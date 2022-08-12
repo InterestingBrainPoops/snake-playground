@@ -54,7 +54,7 @@ impl Optimizer {
             }
         }
     }
-// local search optimization routine
+    // local search optimization routine
     fn local_search(&self, k: f64, initial_guess: Vec<f64>) -> Vec<f64> {
         // number of parameters
         let n_params = initial_guess.len();
@@ -82,7 +82,8 @@ impl Optimizer {
                     best_e = new_e;
                     best_par_values = new_par_values;
                     improved = true;
-                } else { // if it isnt, subtract it by two ( + 1 - 2 has the effect of reducing the current parameter by one)
+                } else {
+                    // if it isnt, subtract it by two ( + 1 - 2 has the effect of reducing the current parameter by one)
                     new_par_values[pi] -= 2.0;
                     // find the new error
                     new_e = self.evaluation_error(k, &new_par_values);
@@ -164,10 +165,10 @@ impl Optimizer {
     fn evaluation_error(&self, k: f64, values: &Vec<f64>) -> f64 {
         // total number of positions
         let n = self.positions.len();
-        
+
         // the inverse of the number of positions
         let n_inverse = 1.0 / (n as f64);
-        
+
         // sum of all of the squared errors
         let sum: f64 = self
             .positions

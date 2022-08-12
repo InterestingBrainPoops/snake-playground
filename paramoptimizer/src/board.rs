@@ -83,7 +83,7 @@ pub enum Status {
 impl Into<f64> for Status {
     fn into(self) -> f64 {
         match self {
-            Status::Win => 1.0, // win is a 1.0
+            Status::Win => 1.0,  // win is a 1.0
             Status::Loss => 0.0, // loss is 0.0
             Status::Draw => 0.5, // draw is a 0.5
         }
@@ -101,21 +101,21 @@ impl Battlesnake {
     pub fn dead(&self, state: &Board, health: u8) -> bool {
         // my head
         let my_head = self.body[0];
-        // the other snakes 
+        // the other snakes
         let other_snakes: Vec<Battlesnake> = state
             .snakes
             .iter()
             .filter(|x| x.id != self.id)
             .cloned()
             .collect();
-        
+
         // if my health is 0
         if health == 0 {
             return true;
         }
         // am i out of bounds?
         if my_head.x < 0 || my_head.x > 10 || my_head.y < 0 || my_head.y > 10 {
-            return true;s
+            return true;
         }
         // am i in the other snakes body?
         if other_snakes[0].body[1..].contains(&my_head) {
@@ -126,7 +126,7 @@ impl Battlesnake {
             return true;
         }
         // am I in my body?
-        if self.body[1][1..].contains(&my_head){
+        if self.body[1..].contains(&my_head) {
             return true;
         }
         false
