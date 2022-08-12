@@ -108,23 +108,27 @@ impl Battlesnake {
             .filter(|x| x.id != self.id)
             .cloned()
             .collect();
+        
         // if my health is 0
         if health == 0 {
             return true;
         }
         // am i out of bounds?
         if my_head.x < 0 || my_head.x > 10 || my_head.y < 0 || my_head.y > 10 {
-            return true;
+            return true;s
         }
         // am i in the other snakes body?
         if other_snakes[0].body[1..].contains(&my_head) {
             return true;
         }
-        
+        // did I lose to head to head?
         if other_snakes[0].body[0] == my_head && other_snakes[0].body.len() >= self.body.len() {
             return true;
         }
-
+        // am I in my body?
+        if self.body[1][1..].contains(&my_head){
+            return true;
+        }
         false
     }
 }
