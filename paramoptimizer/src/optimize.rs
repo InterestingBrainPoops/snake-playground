@@ -1,4 +1,4 @@
-use std::f64::consts::E;
+use std::{f64::consts::E, ops::Mul};
 
 use crate::{board::Position, eval::score};
 use rayon::prelude::*;
@@ -8,9 +8,13 @@ pub struct Optimizer {
 }
 
 impl Optimizer {
-    /// entry point function for optimizing the initial guess across the dataset in self.
-    pub fn local_optimize(&self, k: f64, initial_guess: Vec<f64>) -> Vec<f64> {
-        self.perceptron_learn(initial_guess)
+    /// entry point function for opt&imizing the initial guess across the dataset in self.
+    pub fn local_optimize(&self, k: f64, initial_guess: Vec<f64>, limit: u64) -> Vec<f64> {
+        println!(
+            "Initial MSE: {}",
+            self.better_evaluation_error(&initial_guess)
+        );
+        self.adam_optimizer(&initial_guess, limit)
     }
 
     /// perceptron learning function
@@ -54,6 +58,69 @@ impl Optimizer {
             }
         }
     }
+    fn gradient(&self, guess: &Vec<f64>) -> Vec<f64> {
+        let mut out = vec![];
+        for x in 0..guess.len() {
+            let mut new_guess = guess.clone();
+            new_guess[x] -= 0.001;
+            out.push(
+                -(self.better_evaluation_error(&new_guess) - self.better_evaluation_error(&guess))
+                    / 0.001,
+            );
+        }
+        out
+    }
+    fn adam_optimizer(&self, initial_guess: &Vec<f64>, iteration_limit: u64) -> Vec<f64> {
+        let initial_mse = self.better_evaluation_error(&initial_guess);
+        let alpha = 0.00001;
+        let beta_1: f64 = 0.9;
+        let beta_2 = 0.999;
+        let epsilon = 1e-8;
+        let mut theta_0 = initial_guess.clone();
+        let mut m_t = vec![0.; theta_0.len()];
+        let mut v_t = vec![0.; theta_0.len()];
+        let mut t = 0;
+
+        loop {
+            t += 1;
+            let g_t = self.gradient(&theta_0);
+            m_t = add_vec(&multiply(beta_1, &m_t), &multiply((1. - beta_1), &g_t));
+            v_t = add_vec(
+                &multiply(beta_2, &v_t),
+                &multiply(1. - beta_2, &multiply_vec(&g_t, &g_t)),
+            );
+            let m_cap = divide(&m_t, 1. - (beta_1.powi(t)));
+            let v_cap = divide(&v_t, 1. - (beta_2.powi(t)));
+            let theta_prev = theta_0.clone();
+            theta_0 = subtract(
+                &theta_0,
+                &divide_vec(
+                    &multiply(alpha, &m_cap),
+                    &add(
+                        &v_cap.iter().map(|&x| x.sqrt()).collect::<Vec<f64>>(),
+                        epsilon,
+                    ),
+                ),
+            );
+            if t % 100 == 0 {
+                println!(
+                    "Iteration : {}, Parameters : {:?}. Improvement : {}",
+                    t,
+                    theta_0,
+                    self.better_evaluation_error(&theta_0) - initial_mse
+                );
+            }
+            if theta_0 == theta_prev {
+                break;
+            }
+            if t as u64 == iteration_limit {
+                break;
+            }
+        }
+
+        theta_0
+    }
+
     // local search optimization routine
     fn local_search(&self, k: f64, initial_guess: Vec<f64>) -> Vec<f64> {
         // number of parameters
@@ -233,3 +300,38 @@ fn better_sigmoid(value: f64) -> f64 {
 fn transfer_derivative(value: f64) -> f64 {
     value * (1.0 - value)
 }
+
+fn multiply(x: f64, y: &Vec<f64>) -> Vec<f64> {
+    y.iter().map(|&z| x * z).collect::<Vec<f64>>()
+}
+fn multiply_vec(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
+    x.iter()
+        .enumerate()
+        .map(|(idx, &z)| z * y[idx])
+        .collect::<Vec<f64>>()
+}
+fn divide(x: &Vec<f64>, y: f64) -> Vec<f64> {
+    x.iter().map(|&z| z / y).collect::<Vec<f64>>()
+}
+fn subtract(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
+    x.iter()
+        .enumerate()
+        .map(|(idx, &z)| z - y[idx])
+        .collect::<Vec<f64>>()
+}
+fn add(x: &Vec<f64>, y: f64) -> Vec<f64> {
+    x.iter().map(|&z| y + z).collect::<Vec<f64>>()
+}
+fn add_vec(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
+    x.iter()
+        .enumerate()
+        .map(|(idx, &z)| z + y[idx])
+        .collect::<Vec<f64>>()
+}
+fn divide_vec(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
+    x.iter()
+        .enumerate()
+        .map(|(idx, &z)| z / y[idx])
+        .collect::<Vec<f64>>()
+}
+type Thing = Vec<f64>;

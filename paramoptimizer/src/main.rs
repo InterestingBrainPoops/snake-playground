@@ -7,7 +7,9 @@ use crate::{
     optimize::Optimizer,
 };
 use brotli2::read::BrotliDecoder;
+use colored::Colorize;
 use indicatif::ProgressBar;
+use rand::{thread_rng, Rng};
 use rayon::prelude::{IntoParallelRefMutIterator, ParallelIterator};
 use rusqlite::{Connection, Result};
 use serde::{Deserialize, Serialize};
@@ -145,7 +147,7 @@ fn main() -> Result<()> {
             };
             // reset health values for me and them
             let mut me_health = 100;
-            let mut they_heatlh = 100;
+            let mut they_health = 100;
             // storage for all positions of this game
             let mut positions = vec![];
             // go through all positions
@@ -238,20 +240,50 @@ fn main() -> Result<()> {
     // get t0
     let start = Instant::now();
     // initialize the optimzer
-    let x = Optimizer { positions: frames };
-    // add in the parameters and optimize
-    let new_params = x.local_optimize(
-        0.155,
-        vec![
-            0.0603023030685956,
-            -0.00733339763149862,
-            -0.02557371776507608,
-            0.05614206228233734,
-            0.028001606267965776,
-        ],
-    );
+    let optimizer = Optimizer { positions: frames };
+    let mut input = vec![
+        352.24525705097165,
+        -3.09539854809461,
+        0.6292043691904734,
+        77.41438644642767,
+        5.105937158054635,
+    ];
+    let initial_mse = optimizer.better_evaluation_error(&input);
+    let mut last_mse = initial_mse;
+    for x in 0..1000 {
+        let t0 = Instant::now();
+        let mut rng = thread_rng();
+        for x in &mut input {
+            println!("{:?}", (*x - *x * 0.05)..(*x + *x * 0.05));
+            let first = *x - *x * 0.05;
+            let last = *x + *x * 0.05;
+            let range = if last < first {
+                last..first
+            } else {
+                first..last
+            };
+            *x += rng.gen_range(range);
+        }
+        let new_mse = optimizer.better_evaluation_error(&input);
+        // add in the parameters and optimize
+        input = optimizer.local_optimize(0.155, input, 6_000);
+        println!("{} : {:?}", "Parameters: ".blue(), input);
+        println!("{} : {}", "Improvement".green(), initial_mse - new_mse);
+        println!("{} : {}", "Iteration".yellow(), x);
+        println!("Time taken : {:?}", Instant::now() - t0);
+        println!("Improvement since last iteration: {}", last_mse - new_mse);
+        last_mse = new_mse;
+    }
 
-    println!("Final parameters: {:?}", new_params);
+    /*        vec![
+        0.05181902380016712,
+        -0.01775290032244476,
+        0.00035877484889895907,
+        0.03470805959801342,
+        0.005056952455828632,
+    ], */
+
+    println!("Final parameters: {:?}", input);
     println!("Time taken: {:?}", Instant::now() - start);
     Ok(())
 }
