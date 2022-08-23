@@ -242,11 +242,11 @@ fn main() -> Result<()> {
     // initialize the optimzer
     let optimizer = Optimizer { positions: frames };
     let mut input = vec![
-        352.24525705097165,
-        -3.09539854809461,
-        0.6292043691904734,
-        77.41438644642767,
-        5.105937158054635,
+        0.05181902380016712,
+        -0.01775290032244476,
+        0.00035877484889895907,
+        0.03470805959801342,
+        0.005056952455828632,
     ];
     let initial_mse = optimizer.better_evaluation_error(&input);
     let mut last_mse = initial_mse;

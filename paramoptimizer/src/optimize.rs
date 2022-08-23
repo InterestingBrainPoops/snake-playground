@@ -64,7 +64,7 @@ impl Optimizer {
             let mut new_guess = guess.clone();
             new_guess[x] -= 0.001;
             out.push(
-                -(self.better_evaluation_error(&new_guess) - self.better_evaluation_error(&guess))
+                (self.better_evaluation_error(&new_guess) - self.better_evaluation_error(&guess))
                     / 0.001,
             );
         }
