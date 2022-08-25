@@ -50,7 +50,7 @@ pub struct Game {
     pub positions: Vec<Board>,
 }
 // number of parameters
-pub const NUM_PARAMS: usize = 5;
+pub const NUM_PARAMS: usize = 4;
 
 // position
 #[derive(DeepSizeOf, Serialize, Clone, Deserialize)]
@@ -64,7 +64,7 @@ pub struct Position {
     /// their health
     pub their_health: u8,
     /// the parameter output from the score function
-    pub param_values: [f64; NUM_PARAMS],
+    pub param_values: [f32; NUM_PARAMS],
     /// occupancy bitbaord
     pub all_bb: u128,
 }
@@ -80,8 +80,8 @@ pub enum Status {
     Draw,
 }
 
-impl Into<f64> for Status {
-    fn into(self) -> f64 {
+impl Into<f32> for Status {
+    fn into(self) -> f32 {
         match self {
             Status::Win => 1.0,  // win is a 1.0
             Status::Loss => 0.0, // loss is 0.0

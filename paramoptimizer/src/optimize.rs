@@ -1,6 +1,10 @@
-use std::{f64::consts::E, ops::Mul};
+use std::{f32::consts::E, ops::Mul};
 
-use crate::{board::Position, eval::score};
+use crate::{
+    board::{Position, NUM_PARAMS},
+    eval::score,
+};
+use ndarray::{Array, ArrayBase};
 use rayon::prelude::*;
 
 pub struct Optimizer {
@@ -9,16 +13,12 @@ pub struct Optimizer {
 
 impl Optimizer {
     /// entry point function for opt&imizing the initial guess across the dataset in self.
-    pub fn local_optimize(&self, k: f64, initial_guess: Vec<f64>, limit: u64) -> Vec<f64> {
-        println!(
-            "Initial MSE: {}",
-            self.better_evaluation_error(&initial_guess)
-        );
+    pub fn local_optimize(&self, k: f32, initial_guess: Vec<f32>, limit: u64) -> Vec<f32> {
         self.adam_optimizer(&initial_guess, limit)
     }
 
     /// perceptron learning function
-    fn perceptron_learn(&self, initial_guess: Vec<f64>) -> Vec<f64> {
+    fn perceptron_learn(&self, initial_guess: Vec<f32>) -> Vec<f32> {
         // initialize the weights as the initial guess.
         let mut weights = initial_guess;
         // iteration count
@@ -28,7 +28,7 @@ impl Optimizer {
             // iterate through all positions
             for position in &self.positions {
                 // compute current score
-                let score: f64 = better_sigmoid(
+                let score: f32 = better_sigmoid(
                     position
                         .param_values
                         .iter()
@@ -37,7 +37,7 @@ impl Optimizer {
                         .sum(),
                 );
                 // get the actual value
-                let actual: f64 = position.status.into();
+                let actual: f32 = position.status.into();
                 // compute the error
                 let error = (score - actual) * transfer_derivative(score);
                 // update weights correspondingly
@@ -58,22 +58,22 @@ impl Optimizer {
             }
         }
     }
-    fn gradient(&self, guess: &Vec<f64>) -> Vec<f64> {
+    fn gradient(&self, guess: &Vec<f32>) -> Vec<f32> {
         let mut out = vec![];
         for x in 0..guess.len() {
             let mut new_guess = guess.clone();
             new_guess[x] -= 0.001;
             out.push(
-                (self.better_evaluation_error(&new_guess) - self.better_evaluation_error(&guess))
+                -(self.better_evaluation_error(&new_guess) - self.better_evaluation_error(&guess))
                     / 0.001,
             );
         }
         out
     }
-    fn adam_optimizer(&self, initial_guess: &Vec<f64>, iteration_limit: u64) -> Vec<f64> {
+    fn adam_optimizer(&self, initial_guess: &Vec<f32>, iteration_limit: u64) -> Vec<f32> {
         let initial_mse = self.better_evaluation_error(&initial_guess);
         let alpha = 0.00001;
-        let beta_1: f64 = 0.9;
+        let beta_1: f32 = 0.9;
         let beta_2 = 0.999;
         let epsilon = 1e-8;
         let mut theta_0 = initial_guess.clone();
@@ -97,17 +97,19 @@ impl Optimizer {
                 &divide_vec(
                     &multiply(alpha, &m_cap),
                     &add(
-                        &v_cap.iter().map(|&x| x.sqrt()).collect::<Vec<f64>>(),
+                        &v_cap.iter().map(|&x| x.sqrt()).collect::<Vec<f32>>(),
                         epsilon,
                     ),
                 ),
             );
             if t % 100 == 0 {
+                let eval = self.better_evaluation_error(&theta_0);
+                println!("MSE : {}", eval);
                 println!(
                     "Iteration : {}, Parameters : {:?}. Improvement : {}",
                     t,
                     theta_0,
-                    self.better_evaluation_error(&theta_0) - initial_mse
+                    eval - initial_mse
                 );
             }
             if theta_0 == theta_prev {
@@ -122,7 +124,7 @@ impl Optimizer {
     }
 
     // local search optimization routine
-    fn local_search(&self, k: f64, initial_guess: Vec<f64>) -> Vec<f64> {
+    fn local_search(&self, k: f32, initial_guess: Vec<f32>) -> Vec<f32> {
         // number of parameters
         let n_params = initial_guess.len();
         // lowest error so far, initialized as the current error
@@ -180,7 +182,7 @@ impl Optimizer {
     /// ITS VERY IMPORTANT
     /// you can start the scaling value at 0
     /// It optimizes k using localsearch.
-    pub fn minimize_k(&self, start: f64, params: &Vec<f64>) -> f64 {
+    pub fn minimize_k(&self, start: f32, params: &Vec<f32>) -> f32 {
         // best k
         let mut best = start;
         // best error
@@ -229,29 +231,29 @@ impl Optimizer {
     }
     // find the evaluation error given a k value and values
     // this function is only used in local search
-    fn evaluation_error(&self, k: f64, values: &Vec<f64>) -> f64 {
+    fn evaluation_error(&self, k: f32, values: &Vec<f32>) -> f32 {
         // total number of positions
         let n = self.positions.len();
 
         // the inverse of the number of positions
-        let n_inverse = 1.0 / (n as f64);
+        let n_inverse = 1.0 / (n as f32);
 
         // sum of all of the squared errors
-        let sum: f64 = self
+        let sum: f32 = self
             .positions
             .par_iter()
             .map(|position| {
                 // calculate the score for the given position
-                let score: f64 = position
+                let score: f32 = position
                     .param_values
                     .iter()
                     .enumerate()
                     .map(|x| *x.1 * values[x.0])
                     .sum();
                 // find the actual value of the position
-                let actual: f64 = position.status.into();
+                let actual: f32 = position.status.into();
                 // return the squared error
-                (actual - sigmoid(k, score as f64)).powf(2.0)
+                (actual - sigmoid(k, score as f32)).powf(2.0)
             })
             .sum();
         // sum / n_positions
@@ -260,27 +262,24 @@ impl Optimizer {
 
     // uses normal sigmoid with no scaling factor
     // used in the perceptron optimizer
-    pub fn better_evaluation_error(&self, values: &Vec<f64>) -> f64 {
+    pub fn better_evaluation_error(&self, values: &Vec<f32>) -> f32 {
         // number of positions
         let n = self.positions.len();
         // inverse of number of positions
-        let n_inverse = 1.0 / (n as f64);
+        let n_inverse = 1.0 / (n as f32);
         // sum of the square errors acrosss the entire dataset
-        let sum: f64 = self
+        let sum: f32 = self
             .positions
             .par_iter()
             .map(|position| {
+                let params = Array::from_vec(position.param_values.to_vec());
+                let nvalues = Array::from_vec(values.clone());
                 // score of the position
-                let score: f64 = position
-                    .param_values
-                    .iter()
-                    .enumerate()
-                    .map(|x| *x.1 * values[x.0])
-                    .sum();
+                let score: f32 = params.dot(&nvalues);
                 // the actual value from the ending of the game
-                let actual: f64 = position.status.into();
+                let actual: f32 = position.status.into();
                 // return the squared error
-                (actual - better_sigmoid(score as f64)).powf(2.0)
+                (actual - better_sigmoid(score as f32)).powf(2.0)
             })
             .sum();
         // sum / n_positions
@@ -289,49 +288,62 @@ impl Optimizer {
 }
 
 // sigmoid with scaling factor
-fn sigmoid(k: f64, score: f64) -> f64 {
-    1.0 / (1.0 + 10f64.powf((-k * score) / 400.0))
+fn sigmoid(k: f32, score: f32) -> f32 {
+    1.0 / (1.0 + 10f32.powf((-k * score) / 400.0))
 }
 // sigmoid as described in wikipedia
-fn better_sigmoid(value: f64) -> f64 {
+fn better_sigmoid(value: f32) -> f32 {
     1.0 / (1.0 + E.powf(-value))
 }
 // transfer derivative of sigmoid
-fn transfer_derivative(value: f64) -> f64 {
+fn transfer_derivative(value: f32) -> f32 {
     value * (1.0 - value)
 }
 
-fn multiply(x: f64, y: &Vec<f64>) -> Vec<f64> {
-    y.iter().map(|&z| x * z).collect::<Vec<f64>>()
+fn multiply(x: f32, y: &Vec<f32>) -> Vec<f32> {
+    y.iter().map(|&z| x * z).collect::<Vec<f32>>()
 }
-fn multiply_vec(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
+fn multiply_vec(x: &Vec<f32>, y: &Vec<f32>) -> Vec<f32> {
     x.iter()
         .enumerate()
         .map(|(idx, &z)| z * y[idx])
-        .collect::<Vec<f64>>()
+        .collect::<Vec<f32>>()
 }
-fn divide(x: &Vec<f64>, y: f64) -> Vec<f64> {
-    x.iter().map(|&z| z / y).collect::<Vec<f64>>()
+fn divide(x: &Vec<f32>, y: f32) -> Vec<f32> {
+    x.iter().map(|&z| z / y).collect::<Vec<f32>>()
 }
-fn subtract(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
+fn subtract(x: &Vec<f32>, y: &Vec<f32>) -> Vec<f32> {
     x.iter()
         .enumerate()
         .map(|(idx, &z)| z - y[idx])
-        .collect::<Vec<f64>>()
+        .collect::<Vec<f32>>()
 }
-fn add(x: &Vec<f64>, y: f64) -> Vec<f64> {
-    x.iter().map(|&z| y + z).collect::<Vec<f64>>()
+fn add(x: &Vec<f32>, y: f32) -> Vec<f32> {
+    x.iter().map(|&z| y + z).collect::<Vec<f32>>()
 }
-fn add_vec(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
+fn add_vec(x: &Vec<f32>, y: &Vec<f32>) -> Vec<f32> {
     x.iter()
         .enumerate()
         .map(|(idx, &z)| z + y[idx])
-        .collect::<Vec<f64>>()
+        .collect::<Vec<f32>>()
 }
-fn divide_vec(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
+fn divide_vec(x: &Vec<f32>, y: &Vec<f32>) -> Vec<f32> {
     x.iter()
         .enumerate()
         .map(|(idx, &z)| z / y[idx])
-        .collect::<Vec<f64>>()
+        .collect::<Vec<f32>>()
 }
-type Thing = Vec<f64>;
+type Thing = Vec<f32>;
+use packed_simd::f32x4;
+
+pub fn dot_prod(a: &[f32], b: &[f32]) -> f32 {
+    assert_eq!(a.len(), b.len());
+    assert!(a.len() % 4 == 0);
+
+    a.chunks_exact(4)
+        .map(f32x4::from_slice_unaligned)
+        .zip(b.chunks_exact(4).map(f32x4::from_slice_unaligned))
+        .map(|(a, b)| a * b)
+        .sum::<f32x4>()
+        .sum()
+}

@@ -237,44 +237,63 @@ fn main() -> Result<()> {
     // let min_k = x.minimize_k(0.16, &vec![36, -41, -4, 113]);
     // println!("min_k : {min_k}");
 
-    // get t0
-    let start = Instant::now();
     // initialize the optimzer
     let optimizer = Optimizer { positions: frames };
-    let mut input = vec![
+    let start = vec![
         0.05181902380016712,
         -0.01775290032244476,
-        0.00035877484889895907,
         0.03470805959801342,
         0.005056952455828632,
     ];
-    let initial_mse = optimizer.better_evaluation_error(&input);
-    let mut last_mse = initial_mse;
-    for x in 0..1000 {
-        let t0 = Instant::now();
-        let mut rng = thread_rng();
-        for x in &mut input {
-            println!("{:?}", (*x - *x * 0.05)..(*x + *x * 0.05));
-            let first = *x - *x * 0.05;
-            let last = *x + *x * 0.05;
+    let t0 = Instant::now();
+    let mut start_mse = optimizer.better_evaluation_error(&start);
+    for x in 0..100 {
+        start_mse = optimizer.better_evaluation_error(&start);
+    }
+
+    println!("Time taken : {:?}", (Instant::now() - t0) / 100);
+    println!("Starting MSE: {}", start_mse);
+    let mut walked_inputs = vec![];
+    let mut rng = thread_rng();
+    for _ in 0..10 {
+        let mut adder = vec![];
+        for x in &start {
+            println!("{:?}", (x - x * 0.05)..(x + x * 0.05));
+            let first = x - x * 0.05;
+            let last = x + x * 0.05;
             let range = if last < first {
                 last..first
             } else {
                 first..last
             };
-            *x += rng.gen_range(range);
+            adder.push(x + rng.gen_range(range));
         }
-        let new_mse = optimizer.better_evaluation_error(&input);
+        walked_inputs.push(adder);
+    }
+    let mut new_walked = vec![];
+    for (idx, input) in walked_inputs.iter().enumerate() {
         // add in the parameters and optimize
-        input = optimizer.local_optimize(0.155, input, 6_000);
-        println!("{} : {:?}", "Parameters: ".blue(), input);
-        println!("{} : {}", "Improvement".green(), initial_mse - new_mse);
-        println!("{} : {}", "Iteration".yellow(), x);
-        println!("Time taken : {:?}", Instant::now() - t0);
-        println!("Improvement since last iteration: {}", last_mse - new_mse);
-        last_mse = new_mse;
+        let optimized = optimizer.local_optimize(0.155, input.clone(), 500);
+        let new_mse = optimizer.better_evaluation_error(input);
+
+        println!("Iteration : {idx}");
+        // println!("{} : {}", "Iteration".yellow(), x);
+        if new_mse < start_mse {
+            new_walked.push((new_mse, optimized));
+        }
+    }
+    if new_walked.is_empty() {
+        println!("None were better this round");
     }
 
+    let mut smallest = new_walked[0].clone();
+    for x in &new_walked {
+        if x.0 < smallest.0 {
+            smallest = x.clone();
+        }
+    }
+    println!("Best parameters : {:?}", smallest.1);
+    println!("MSE : {}", smallest.0);
     /*        vec![
         0.05181902380016712,
         -0.01775290032244476,
@@ -282,8 +301,5 @@ fn main() -> Result<()> {
         0.03470805959801342,
         0.005056952455828632,
     ], */
-
-    println!("Final parameters: {:?}", input);
-    println!("Time taken: {:?}", Instant::now() - start);
     Ok(())
 }
