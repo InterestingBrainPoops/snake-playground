@@ -145,7 +145,7 @@ fn main() -> Result<()> {
             };
             // reset health values for me and them
             let mut me_health = 100;
-            let mut they_heatlh = 100;
+            let mut they_health = 100;
             // storage for all positions of this game
             let mut positions = vec![];
             // go through all positions
@@ -191,6 +191,11 @@ fn main() -> Result<()> {
                     board: position.clone(),
                     param_values: Default::default(),
                     all_bb,
+                    stage: position
+                        .snakes
+                        .iter()
+                        .map(|x| x.body.len() as u64)
+                        .sum::<u64>(),
                 });
             }
             games.append(&mut positions);
@@ -243,6 +248,11 @@ fn main() -> Result<()> {
     let new_params = x.local_optimize(
         0.155,
         vec![
+            0.0603023030685956,
+            -0.00733339763149862,
+            -0.02557371776507608,
+            0.05614206228233734,
+            0.028001606267965776,
             0.0603023030685956,
             -0.00733339763149862,
             -0.02557371776507608,

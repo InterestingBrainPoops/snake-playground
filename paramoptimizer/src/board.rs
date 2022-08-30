@@ -67,6 +67,8 @@ pub struct Position {
     pub param_values: [f64; NUM_PARAMS],
     /// occupancy bitbaord
     pub all_bb: u128,
+    /// the stage of the game
+    pub stage: u64,
 }
 
 /// Status of the board

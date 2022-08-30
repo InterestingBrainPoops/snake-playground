@@ -1,6 +1,9 @@
 use std::f64::consts::E;
 
-use crate::{board::Position, eval::score};
+use crate::{
+    board::{Position, NUM_PARAMS},
+    eval::score,
+};
 use rayon::prelude::*;
 
 pub struct Optimizer {
@@ -10,7 +13,7 @@ pub struct Optimizer {
 impl Optimizer {
     /// entry point function for optimizing the initial guess across the dataset in self.
     pub fn local_optimize(&self, k: f64, initial_guess: Vec<f64>) -> Vec<f64> {
-        self.perceptron_learn(initial_guess)
+        self.adam_optimizer(&initial_guess)
     }
 
     /// perceptron learning function
@@ -203,13 +206,20 @@ impl Optimizer {
             .positions
             .par_iter()
             .map(|position| {
-                // score of the position
-                let score: f64 = position
+                // value of the position with the first set of parameters
+                let a: f64 = position
                     .param_values
                     .iter()
                     .enumerate()
                     .map(|x| *x.1 * values[x.0])
                     .sum();
+                let b = position
+                    .param_values
+                    .iter()
+                    .enumerate()
+                    .map(|x| *x.1 * values[NUM_PARAMS + x.0 - 1])
+                    .sum::<f64>();
+                let score: f64 = a + (b - a) * (((position.stage as f64) / 30.0).min(1.0).max(0.0));
                 // the actual value from the ending of the game
                 let actual: f64 = position.status.into();
                 // return the squared error
@@ -218,6 +228,64 @@ impl Optimizer {
             .sum();
         // sum / n_positions
         n_inverse * sum
+    }
+    fn gradient(&self, guess: &Vec<f64>) -> Vec<f64> {
+        let mut out = vec![];
+        for x in 0..guess.len() {
+            let mut new_guess = guess.clone();
+            new_guess[x] -= 0.001;
+            out.push(
+                -(self.better_evaluation_error(&new_guess) - self.better_evaluation_error(&guess))
+                    / 0.001,
+            );
+        }
+        out
+    }
+    fn adam_optimizer(&self, initial_guess: &Vec<f64>) -> Vec<f64> {
+        let alpha = 0.00001;
+        let beta_1: f64 = 0.9;
+        let beta_2 = 0.999;
+        let epsilon = 1e-8;
+        let mut theta_0 = initial_guess.clone();
+        let mut m_t = vec![0.; theta_0.len()];
+        let mut v_t = vec![0.; theta_0.len()];
+        let mut t = 0;
+
+        loop {
+            t += 1;
+            let g_t = self.gradient(&theta_0);
+            m_t = add_vec(&multiply(beta_1, &m_t), &multiply((1. - beta_1), &g_t));
+            v_t = add_vec(
+                &multiply(beta_2, &v_t),
+                &multiply(1. - beta_2, &multiply_vec(&g_t, &g_t)),
+            );
+            let m_cap = divide(&m_t, 1. - (beta_1.powi(t)));
+            let v_cap = divide(&v_t, 1. - (beta_2.powi(t)));
+            let theta_prev = theta_0.clone();
+            theta_0 = subtract(
+                &theta_0,
+                &divide_vec(
+                    &multiply(alpha, &m_cap),
+                    &add(
+                        &v_cap.iter().map(|&x| x.sqrt()).collect::<Vec<f64>>(),
+                        epsilon,
+                    ),
+                ),
+            );
+            if t % 100 == 0 {
+                println!(
+                    "Iteration : {}, Parameters : {:?}. MSE : {}",
+                    t,
+                    theta_0,
+                    self.better_evaluation_error(&theta_0)
+                );
+            }
+            if theta_0 == theta_prev {
+                break;
+            }
+        }
+
+        theta_0
     }
 }
 
@@ -233,3 +301,37 @@ fn better_sigmoid(value: f64) -> f64 {
 fn transfer_derivative(value: f64) -> f64 {
     value * (1.0 - value)
 }
+fn multiply(x: f64, y: &Vec<f64>) -> Vec<f64> {
+    y.iter().map(|&z| x * z).collect::<Vec<f64>>()
+}
+fn multiply_vec(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
+    x.iter()
+        .enumerate()
+        .map(|(idx, &z)| z * y[idx])
+        .collect::<Vec<f64>>()
+}
+fn divide(x: &Vec<f64>, y: f64) -> Vec<f64> {
+    x.iter().map(|&z| z / y).collect::<Vec<f64>>()
+}
+fn subtract(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
+    x.iter()
+        .enumerate()
+        .map(|(idx, &z)| z - y[idx])
+        .collect::<Vec<f64>>()
+}
+fn add(x: &Vec<f64>, y: f64) -> Vec<f64> {
+    x.iter().map(|&z| y + z).collect::<Vec<f64>>()
+}
+fn add_vec(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
+    x.iter()
+        .enumerate()
+        .map(|(idx, &z)| z + y[idx])
+        .collect::<Vec<f64>>()
+}
+fn divide_vec(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
+    x.iter()
+        .enumerate()
+        .map(|(idx, &z)| z / y[idx])
+        .collect::<Vec<f64>>()
+}
+type Thing = Vec<f64>;
