@@ -54,12 +54,14 @@ fn main() -> Result<()> {
         // open the file
         let thing = fs::read(Path::new("./datastore")).unwrap();
         // deserialize the file from messagepack to the Frames struct
-        let thing2 = <Frames>::deserialize(&mut rmp_serde::Deserializer::new(&thing[..])).unwrap();
+        let thing2 = <Frames>::deserialize(&mut rmp_serde::Deserializer::new(&thing[..]))
+            .expect("Datastore file likely invalid, please delete it and run this again.");
         // set frames to the Frames.positions
         frames = thing2.frames;
         println!("Finished getting all frames from file");
         println!("Time taken : {:?}", Instant::now() - start);
     } else {
+        println!("Did not find old datastore file, so regenerating.");
         // open connection to the sqlite db
         let conn = Connection::open("./two_snake_snakedump.sqlite")?;
         // prepare the statement to grab all of the info
@@ -245,21 +247,7 @@ fn main() -> Result<()> {
     // initialize the optimzer
     let x = Optimizer { positions: frames };
     // add in the parameters and optimize
-    let new_params = x.local_optimize(
-        0.155,
-        vec![
-            0.0603023030685956,
-            -0.00733339763149862,
-            -0.02557371776507608,
-            0.05614206228233734,
-            0.028001606267965776,
-            0.0603023030685956,
-            -0.00733339763149862,
-            -0.02557371776507608,
-            0.05614206228233734,
-            0.028001606267965776,
-        ],
-    );
+    let new_params = x.local_optimize(0.155, vec![0.0; 10]);
 
     println!("Final parameters: {:?}", new_params);
     println!("Time taken: {:?}", Instant::now() - start);

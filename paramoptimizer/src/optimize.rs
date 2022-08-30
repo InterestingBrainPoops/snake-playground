@@ -219,7 +219,7 @@ impl Optimizer {
                     .enumerate()
                     .map(|x| *x.1 * values[NUM_PARAMS + x.0 - 1])
                     .sum::<f64>();
-                let score: f64 = a + (b - a) * (((position.stage as f64) / 30.0).min(1.0).max(0.0));
+                let score: f64 = a + (b - a) * (((position.stage as f64) / 50.0).min(1.0).max(0.0));
                 // the actual value from the ending of the game
                 let actual: f64 = position.status.into();
                 // return the squared error
