@@ -247,7 +247,21 @@ fn main() -> Result<()> {
     // initialize the optimzer
     let x = Optimizer { positions: frames };
     // add in the parameters and optimize
-    let new_params = x.local_optimize(0.155, vec![0.0; 10]);
+    let new_params = x.local_optimize(
+        0.155,
+        vec![
+            0.12943974698015298,
+            0.02318816782850636,
+            0.0006345509757400835,
+            0.022501310394491356,
+            0.004472314644872142,
+            -0.05773554823118221,
+            -0.0001631035304927592,
+            0.022048164331412715,
+            0.006999379208654727,
+            -3.2998908095040493e-9,
+        ],
+    );
 
     println!("Final parameters: {:?}", new_params);
     println!("Time taken: {:?}", Instant::now() - start);
