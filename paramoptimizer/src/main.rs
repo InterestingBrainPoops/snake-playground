@@ -3,12 +3,13 @@ mod eval;
 mod optimize;
 
 use crate::{
-    board::{Game, Position, Status, NUM_PARAMS},
+    board::{Game, Position, Status},
     optimize::Optimizer,
 };
 use brotli2::read::BrotliDecoder;
 use indicatif::ProgressBar;
-use rayon::prelude::{IntoParallelRefMutIterator, ParallelIterator};
+use rand::{thread_rng, Rng};
+use rayon::prelude::*;
 use rusqlite::{Connection, Result};
 use serde::{Deserialize, Serialize};
 extern crate rmp_serde as rmps;
@@ -17,6 +18,7 @@ use rmps::{Deserializer, Serializer};
 use std::{
     fs,
     io::{prelude::*, Cursor},
+    os::windows::thread,
     path::Path,
     time::Instant,
 };
@@ -145,7 +147,7 @@ fn main() -> Result<()> {
             };
             // reset health values for me and them
             let mut me_health = 100;
-            let mut they_heatlh = 100;
+            let mut they_health = 100;
             // storage for all positions of this game
             let mut positions = vec![];
             // go through all positions
@@ -190,10 +192,11 @@ fn main() -> Result<()> {
                     their_health: they_health,
                     board: position.clone(),
                     param_values: Default::default(),
+                    future_param_values: Default::default(),
                     all_bb,
                 });
             }
-            games.append(&mut positions);
+            games.push(positions.clone());
         }
         println!("Time taken : {:?}", Instant::now() - start);
         println!("Finished adding all frames");
@@ -202,16 +205,27 @@ fn main() -> Result<()> {
         // progress bar
         let bar = ProgressBar::new(games.len() as u64);
         // score all of the games
-        games.par_iter_mut().for_each(|x| {
-            let param_values = eval::score(x);
-            x.param_values = param_values;
+        let OFFSET = 6;
+        games.par_iter_mut().for_each(|game| {
+            let game_len = game.len();
+            for y in &mut game[..] {
+                let param_values = eval::score(y);
+                y.param_values = param_values;
+            }
+            for idx in 0..(game_len - OFFSET) {
+                game[idx].future_param_values = game[idx + OFFSET].param_values;
+            }
             bar.inc(1);
         });
         bar.finish();
         println!();
         println!("Time taken : {:?}", Instant::now() - start);
-        println!("Finished processing all frames");
-        frames = games;
+        println!("Finished evaluating all frames");
+        frames = games
+            .iter()
+            .flat_map(|x| &x[0..(x.len() - OFFSET)])
+            .cloned()
+            .collect();
 
         println!("Loading frames into datastore file");
         let start = Instant::now();
@@ -240,15 +254,12 @@ fn main() -> Result<()> {
     // initialize the optimzer
     let x = Optimizer { positions: frames };
     // add in the parameters and optimize
+    let mut thread_rng = thread_rng();
     let new_params = x.local_optimize(
         0.155,
-        vec![
-            0.0603023030685956,
-            -0.00733339763149862,
-            -0.02557371776507608,
-            0.05614206228233734,
-            0.028001606267965776,
-        ],
+        (0..5)
+            .map(|_| thread_rng.gen_range(-1.0..1.0))
+            .collect::<Vec<f64>>(),
     );
 
     println!("Final parameters: {:?}", new_params);

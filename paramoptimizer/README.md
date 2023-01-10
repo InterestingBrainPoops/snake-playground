@@ -1,5 +1,5 @@
 ## Setup:  
-1. Take the dataset from [link](https://discord.com/channels/689979228841836632/692200535348215839/992829495834857522)  
+1. Take the dataset from [link](https://cdn.discordapp.com/attachments/692200535348215839/992829495214080020/two_snake_snakedump.sqlite)  
 2. put it in the root directory of this crate  
 so it looks like this:  
 ```
@@ -11,7 +11,7 @@ parameter_optimizer/
 ```
 3. run `cargo run --release`  
 ## Warning:  
-by default this uses rayon, so expect high cpu usage.  
+by default this uses rayon with all your cores, so expect high (100% on all cores) cpu usage.  
   
 ## Usage:  
 in `src/main.rs` at line 109, you can input the values for your eval function. the current optimized values are stored there.  

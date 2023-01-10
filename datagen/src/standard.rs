@@ -74,7 +74,7 @@ impl Ruleset for Standard {
         board.food = new_food;
 
         // spawn food
-        let foodneeded = board.check_food_needed();
+        let foodneeded = board.check_food_needed(1, 25);
         if foodneeded > 0 {
             board.place_food_randomly(foodneeded);
         }

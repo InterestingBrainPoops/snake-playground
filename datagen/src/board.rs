@@ -1,3 +1,5 @@
+use std::iter::zip;
+
 use rand::{seq::SliceRandom, thread_rng};
 
 #[derive(Clone)]
@@ -61,26 +63,31 @@ impl Board {
         return 0;
     }
     pub fn place_food_randomly(&mut self, num_food: u32) {
-        let unoccupied = self.get_unoccupied_points(false, false);
+        let unoccupied = self.get_unoccupied_points(false);
         self.place_food_randomly_at_positions(num_food, unoccupied);
     }
 
-    pub fn get_unoccupied_points(&self, possible_moves: bool, hazards: bool) -> Vec<Coordinate> {
-        let mut occupied_points = vec![vec![false; self.height]; self.width];
-        for x in &self.food {
-            occupied_points[x.x as usize][x.y as usize] = true;
-        }
+    pub fn get_unoccupied_points(&self, include_hazards: bool) -> Vec<Coordinate> {
+        let mut out = vec![];
 
-        for snake in &self.snakes {
-            if !snake.alive {
+        for x in zip(0..self.width, 0..self.height) {
+            let coord = Coordinate::new(x.0 as i32, x.1 as i32);
+            if self.food.contains(&coord)
+                || self
+                    .snakes
+                    .iter()
+                    .any(|x| x.alive && x.body.contains(&coord))
+                || (include_hazards && self.hazards.contains(&coord))
+            {
                 continue;
             }
-            for (idx, segment) in snake.body.iter().enumerate() {
-                if 
-            }
+            out.push(coord);
         }
+        out
     }
     pub fn place_food_randomly_at_positions(&mut self, num_food: u32, unoccupied: Vec<Coordinate>) {
+        let mut rng = thread_rng();
+        for _ in 0..num_food {}
     }
 
     pub fn create_default(width: u32, height: u32, num_snakes: u8) -> Board {

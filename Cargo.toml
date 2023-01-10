@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "datagen",
+    "linalg",
+    "paramoptimizer",
+    "perft-generator",
+    "temporaldiff"
+]

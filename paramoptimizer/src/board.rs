@@ -63,8 +63,10 @@ pub struct Position {
     pub my_health: u8,
     /// their health
     pub their_health: u8,
-    /// the parameter output from the score function
+    /// current parameter values
     pub param_values: [f64; NUM_PARAMS],
+    /// future parameter values
+    pub future_param_values: [f64; NUM_PARAMS],
     /// occupancy bitbaord
     pub all_bb: u128,
 }

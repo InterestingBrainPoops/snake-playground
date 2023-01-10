@@ -1,8 +1,11 @@
 use std::f64::consts::E;
 
-use crate::{board::Position, eval::score};
+use crate::{
+    board::Position,
+    eval::{self, score},
+};
+use rand::prelude::*;
 use rayon::prelude::*;
-
 pub struct Optimizer {
     pub positions: Vec<Position>,
 }
@@ -10,49 +13,91 @@ pub struct Optimizer {
 impl Optimizer {
     /// entry point function for optimizing the initial guess across the dataset in self.
     pub fn local_optimize(&self, k: f64, initial_guess: Vec<f64>) -> Vec<f64> {
-        self.perceptron_learn(initial_guess)
+        self.stoch_gradient_descent(initial_guess)
     }
 
     /// perceptron learning function
-    fn perceptron_learn(&self, initial_guess: Vec<f64>) -> Vec<f64> {
+    fn stoch_gradient_descent(&self, initial_guess: Vec<f64>) -> Vec<f64> {
+        // initialize thread rng
+        let mut rng = thread_rng();
         // initialize the weights as the initial guess.
         let mut weights = initial_guess;
         // iteration count
-        let mut iteration = 0;
+        let mut iteration = 1;
+        // learning rate
+        let learning_rate = 0.001;
+        let batch_size = 1000;
+        let testing_amount = 10_000;
+        let testing_data = &self.positions[0..testing_amount];
+        let training_data = &self.positions[testing_amount..];
         // loop forever
         loop {
-            // iterate through all positions
-            for position in &self.positions {
-                // compute current score
-                let score: f64 = better_sigmoid(
-                    position
-                        .param_values
-                        .iter()
-                        .enumerate()
-                        .map(|x| *x.1 * weights[x.0])
-                        .sum(),
-                );
-                // get the actual value
-                let actual: f64 = position.status.into();
-                // compute the error
-                let error = (score - actual) * transfer_derivative(score);
-                // update weights correspondingly
-                for (idx, weight) in weights.iter_mut().enumerate() {
-                    // learning rate is 0.0001
-                    *weight -= (error * 0.0001 * position.param_values[idx]);
-                }
+            let batch: Vec<Position> = training_data
+                .choose_multiple(&mut rng, batch_size)
+                .cloned()
+                .collect();
+            let error = self.average_error(&weights, &batch[..]);
+            for x in 0..weights.len() {
+                weights[x] += learning_rate * error * transfer;
             }
             iteration += 1;
-            if iteration % 10 == 0 {
+            if iteration % 1000 == 0 {
                 // print every 10 iterations to prevent terminal spam
                 println!(
-                    "MSE: {}, Weights: {:?}, iteration : {}",
-                    self.better_evaluation_error(&weights),
+                    "Overall MSE: {}, Weights: {:?}, iteration : {}",
+                    self.MSE_loss(&weights, &self.positions),
                     weights,
                     iteration
                 );
+                println!("Testing MSE: {}", self.MSE_loss(&weights, testing_data));
+                println!("Training MSE: {}", self.MSE_loss(&weights, training_data));
+                println!(
+                    "Testing Error: {}",
+                    self.average_error(&weights, testing_data)
+                );
+                println!(
+                    "Training Error: {}",
+                    self.average_error(&weights, training_data)
+                );
             }
         }
+    }
+    /// compute the gradient vector
+    fn gradient(
+        &self,
+        guess: &Vec<f64>,
+        mut thread_rng: &mut ThreadRng,
+        batch_size: usize,
+    ) -> Vec<f64> {
+        // the output vector
+        let mut out = vec![];
+        // batch of positions to use
+        let batch: Vec<Position> = self
+            .positions
+            .choose_multiple(&mut thread_rng, batch_size)
+            .cloned()
+            .collect();
+        // go through each guess parameter
+        for x in 0..guess.len() {
+            // clone the weights
+            let mut new_guess = guess.clone();
+            // update the current weight by .001 (some small nonce)
+            let nonce = 0.000000000001;
+            new_guess[x] += nonce;
+            // calculate the slope of the error function
+            let evaluation_error =
+                self.average_error(&new_guess, &batch) - self.average_error(guess, &batch);
+            if evaluation_error < nonce {
+                panic!(
+                    "Evaluation error was less than {}, it was {}",
+                    nonce, evaluation_error
+                );
+            }
+            let slope = (evaluation_error) / nonce;
+            // add the absolute value since the gradient always points in the direction of greatest ASCENT
+            out.push(slope.abs());
+        }
+        out
     }
     // local search optimization routine
     fn local_search(&self, k: f64, initial_guess: Vec<f64>) -> Vec<f64> {
@@ -184,7 +229,7 @@ impl Optimizer {
                 // find the actual value of the position
                 let actual: f64 = position.status.into();
                 // return the squared error
-                (actual - sigmoid(k, score as f64)).powf(2.0)
+                (actual - sigmoid(k, score as f64))
             })
             .sum();
         // sum / n_positions
@@ -193,14 +238,13 @@ impl Optimizer {
 
     // uses normal sigmoid with no scaling factor
     // used in the perceptron optimizer
-    pub fn better_evaluation_error(&self, values: &Vec<f64>) -> f64 {
+    pub fn average_error(&self, values: &Vec<f64>, batch: &[Position]) -> f64 {
         // number of positions
-        let n = self.positions.len();
+        let n = batch.len();
         // inverse of number of positions
         let n_inverse = 1.0 / (n as f64);
         // sum of the square errors acrosss the entire dataset
-        let sum: f64 = self
-            .positions
+        let sum: f64 = batch
             .par_iter()
             .map(|position| {
                 // score of the position
@@ -211,6 +255,43 @@ impl Optimizer {
                     .map(|x| *x.1 * values[x.0])
                     .sum();
                 // the actual value from the ending of the game
+                // let actual: f64 = position
+                //     .future_param_values
+                //     .iter()
+                //     .enumerate()
+                //     .map(|x| *x.1 * values[x.0])
+                //     .sum();
+                let actual: f64 = position.status.into();
+                // return the squared error
+                (actual - better_sigmoid(score as f64))
+            })
+            .sum();
+        // sum / n_positions
+        n_inverse * sum
+    }
+    pub fn MSE_loss(&self, values: &Vec<f64>, batch: &[Position]) -> f64 {
+        // number of positions
+        let n = batch.len();
+        // inverse of number of positions
+        let n_inverse = 1.0 / (n as f64);
+        // sum of the square errors acrosss the entire dataset
+        let sum: f64 = batch
+            .par_iter()
+            .map(|position| {
+                // score of the position
+                let score: f64 = position
+                    .param_values
+                    .iter()
+                    .enumerate()
+                    .map(|x| *x.1 * values[x.0])
+                    .sum();
+                // the actual value from the ending of the game
+                // let actual: f64 = position
+                //     .future_param_values
+                //     .iter()
+                //     .enumerate()
+                //     .map(|x| *x.1 * values[x.0])
+                //     .sum();
                 let actual: f64 = position.status.into();
                 // return the squared error
                 (actual - better_sigmoid(score as f64)).powf(2.0)
